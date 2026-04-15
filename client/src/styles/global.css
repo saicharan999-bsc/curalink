@@ -1,7 +1,9 @@
 :root {
-  font-family: "Segoe UI", sans-serif;
-  color: #172033;
-  background: linear-gradient(180deg, #f7fbff 0%, #eef5f0 100%);
+  font-family: Georgia, "Times New Roman", serif;
+  color: #1f2933;
+  background:
+    radial-gradient(circle at top left, rgba(216, 180, 101, 0.22), transparent 30%),
+    linear-gradient(180deg, #f8f4eb 0%, #edf3f8 52%, #f4f8f3 100%);
 }
 
 * {
@@ -10,6 +12,12 @@
 
 body {
   margin: 0;
+  min-height: 100vh;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 
 a {
@@ -39,30 +47,48 @@ a {
 .page {
   display: grid;
   gap: 24px;
+  max-width: 1180px;
+  margin: 0 auto;
 }
 
 .hero,
 .section,
 .card,
-.stat {
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #d7e3da;
-  border-radius: 20px;
+.stat,
+.context-card {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(115, 138, 148, 0.18);
+  border-radius: 24px;
   padding: 24px;
+  box-shadow: 0 18px 50px rgba(31, 41, 51, 0.08);
 }
 
 .hero {
   display: grid;
   gap: 20px;
+  align-items: start;
 }
 
 .hero-copy,
 .empty-state,
 .loader,
+.error-banner,
 .muted p,
 .card p {
   margin: 12px 0 0;
   color: #4f5d75;
+}
+
+.hero form {
+  margin-top: 8px;
+}
+
+.error-banner {
+  color: #9f1239;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-radius: 16px;
+  padding: 16px 20px;
 }
 
 .search-box {
@@ -72,18 +98,36 @@ a {
 
 .search-box input,
 .search-box button {
-  border-radius: 12px;
-  border: 1px solid #c9d6cf;
+  border-radius: 14px;
+  border: 1px solid #d2d9df;
   padding: 14px 16px;
   font: inherit;
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .search-box button {
-  background: #52796f;
+  background: linear-gradient(135deg, #234e52 0%, #396b64 100%);
   color: #fff;
   cursor: pointer;
 }
 
+.chip-button {
+  border: 1px solid #d2d9df;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 999px;
+  padding: 10px 14px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.context-grid,
 .stats-grid,
 .card-grid {
   display: grid;
@@ -91,21 +135,93 @@ a {
   margin-top: 16px;
 }
 
+.context-card span,
 .stat strong {
   display: block;
+}
+
+.context-card span {
+  color: #5b6770;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.context-card strong,
+.stat strong {
   margin-top: 8px;
-  font-size: 32px;
+  font-size: 30px;
+}
+
+.context-card strong {
+  font-size: 20px;
+  line-height: 1.3;
 }
 
 .card-subtitle {
   font-weight: 600;
 }
 
+.card-badge,
+.tag {
+  display: inline-flex;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #ecf4f1;
+  color: #234e52;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.card-badge {
+  margin-bottom: 12px;
+}
+
+.card-note,
+.source-note {
+  color: #35505c;
+}
+
+.recommendation-card,
+.insight-panel {
+  margin-top: 16px;
+  padding: 18px 20px;
+  border-radius: 20px;
+  background: rgba(236, 244, 241, 0.65);
+  border: 1px solid rgba(35, 78, 82, 0.12);
+}
+
+.insight-copy {
+  margin: 12px 0 0;
+  white-space: pre-wrap;
+  font: inherit;
+  color: #35505c;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
 @media (min-width: 768px) {
   .hero,
+  .context-grid,
   .stats-grid,
   .card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero {
+    grid-template-columns: 1.1fr 0.9fr;
+  }
+
+  .context-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .stats-grid {

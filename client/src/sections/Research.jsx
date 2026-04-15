@@ -1,21 +1,29 @@
 import Card from "../components/Card.jsx";
-import { formatPubMedItem } from "../utils/format.js";
+import { formatPublicationItem } from "../utils/format.js";
 
 export default function Research({ items }) {
-  const cards = items.slice(0, 5).map(formatPubMedItem);
+  const cards = items.slice(0, 6).map(formatPublicationItem);
+
+  if (!cards.length) {
+    return null;
+  }
 
   return (
     <section className="section">
-      <h2>Research</h2>
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Publications</p>
+          <h2>Relevant research papers</h2>
+        </div>
+      </div>
       <div className="card-grid">
-        {cards.length ? (
-          cards.map((item, index) => <Card key={item.title || index} {...item} />)
-        ) : (
-          <p className="empty-state">
-            Search to view PubMed results. OpenAlex support is ready in the data
-            layer.
-          </p>
-        )}
+        {cards.map((item, index) => (
+          <Card
+            key={item.title || index}
+            {...item}
+            badge={item.source || "Publication"}
+          />
+        ))}
       </div>
     </section>
   );

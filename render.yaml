@@ -1,0 +1,6 @@
+services:
+  - type: static_site
+    name: curalink-client
+    rootDir: client
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist

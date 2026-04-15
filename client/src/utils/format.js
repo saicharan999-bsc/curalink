@@ -1,15 +1,15 @@
-export function formatPubMedItem(item) {
-  if (typeof item === "string") {
-    return {
-      title: "PubMed XML response",
-      description: item.slice(0, 180),
-    };
-  }
-
+export function formatPublicationItem(item) {
   return {
-    title: item?.title || "PubMed item",
-    description: item?.abstract || "No summary available.",
+    title: item?.title || "Publication",
+    subtitle: [item?.source, item?.year, item?.authors].filter(Boolean).join(" | "),
+    description: item?.summary || "No summary available.",
     link: item?.url,
+    source: item?.source || "Publication",
+    relevanceNote: item?.reason || "",
+    meta: [
+      item?.score ? `Score: ${item.score}` : "",
+      item?.journal ? `Journal: ${item.journal}` : "",
+    ].filter(Boolean),
   };
 }
 
@@ -24,13 +24,16 @@ export function formatOpenAlexItem(item) {
 
 export function formatTrialItem(item) {
   return {
-    title: item?.protocolSection?.identificationModule?.briefTitle || "Clinical trial",
-    subtitle: item?.protocolSection?.statusModule?.overallStatus || "",
-    description:
-      item?.protocolSection?.descriptionModule?.briefSummary ||
-      "No summary available.",
-    link: item?.protocolSection?.identificationModule?.nctId
-      ? `https://clinicaltrials.gov/study/${item.protocolSection.identificationModule.nctId}`
-      : "",
+    title: item?.title || "Clinical trial",
+    subtitle: [item?.source, item?.status, item?.location].filter(Boolean).join(" | "),
+    description: item?.summary || "No summary available.",
+    link: item?.url || "",
+    source: item?.source || "ClinicalTrials.gov",
+    relevanceNote: item?.reason || "",
+    meta: [
+      item?.score ? `Score: ${item.score}` : "",
+      item?.year ? `Year: ${item.year}` : "",
+      item?.authors ? `Sponsor: ${item.authors}` : "",
+    ].filter(Boolean),
   };
 }

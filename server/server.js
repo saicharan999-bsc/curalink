@@ -1,26 +1,23 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import searchRoute from "./routes/search.js";
+import searchRoute from "./routes/search.route.js";
+import { API_BASE_PATH, DEFAULT_PORT } from "./config/constants.js";
 
 dotenv.config();
 
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Routes
-app.use("/api/search", searchRoute);
+app.use(API_BASE_PATH, searchRoute);
 
-// Test route (optional but useful)
 app.get("/", (req, res) => {
-  res.send("Backend is running 🚀");
+  res.send("Backend is running");
 });
 
-// ✅ Correct PORT (only once)
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || DEFAULT_PORT;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

@@ -1,3 +1,3 @@
 export default function Loader() {
-  return <p className="loader">Loading results...</p>;
+  return <p className="loader">Analyzing research...</p>;
 }
