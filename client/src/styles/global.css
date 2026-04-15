@@ -1,0 +1,114 @@
+:root {
+  font-family: "Segoe UI", sans-serif;
+  color: #172033;
+  background: linear-gradient(180deg, #f7fbff 0%, #eef5f0 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+.navbar,
+.page {
+  padding: 24px;
+}
+
+.navbar h1,
+.hero h2,
+.section h2,
+.card h3 {
+  margin: 0;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+  color: #52796f;
+}
+
+.page {
+  display: grid;
+  gap: 24px;
+}
+
+.hero,
+.section,
+.card,
+.stat {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #d7e3da;
+  border-radius: 20px;
+  padding: 24px;
+}
+
+.hero {
+  display: grid;
+  gap: 20px;
+}
+
+.hero-copy,
+.empty-state,
+.loader,
+.muted p,
+.card p {
+  margin: 12px 0 0;
+  color: #4f5d75;
+}
+
+.search-box {
+  display: grid;
+  gap: 12px;
+}
+
+.search-box input,
+.search-box button {
+  border-radius: 12px;
+  border: 1px solid #c9d6cf;
+  padding: 14px 16px;
+  font: inherit;
+}
+
+.search-box button {
+  background: #52796f;
+  color: #fff;
+  cursor: pointer;
+}
+
+.stats-grid,
+.card-grid {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.stat strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 32px;
+}
+
+.card-subtitle {
+  font-weight: 600;
+}
+
+@media (min-width: 768px) {
+  .hero,
+  .stats-grid,
+  .card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
