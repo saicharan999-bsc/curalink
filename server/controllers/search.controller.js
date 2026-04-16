@@ -1,86 +1,103 @@
-import { fetchPubMed } from "../services/pubmed.service.js";
 import { fetchOpenAlex } from "../services/openalex.service.js";
 import { fetchTrials } from "../services/trials.service.js";
-import {
-  buildStructuredResponse,
-  normalizeOpenAlexCandidates,
-  normalizePubMedCandidates,
-  normalizeTrialCandidates,
-} from "../services/merge.service.js";
-import { generateAiInsights } from "../services/llm.service.js";
 import { rankResults } from "../services/ranking.service.js";
-import { resolveSearchContext } from "../services/context.service.js";
-import { buildSearchQuery } from "../utils/queryBuilder.js";
+import { generateAiInsights } from "../services/llm.service.js";
+
+/* -------------------- INTENT DETECTION -------------------- */
+
+const detectIntent = (query) => {
+  if (!query) return "general";
+
+  const q = query.toLowerCase();
+
+  if (q.includes("treatment") || q.includes("therapy") || q.includes("stimulation")) return "treatment";
+  if (q.includes("trial") || q.includes("study")) return "trial";
+  if (q.includes("cause") || q.includes("mechanism")) return "research";
+
+  return "general";
+};
 
 export const searchController = async (req, res) => {
   try {
-    const { disease = "", query = "", location = "" } = resolveSearchContext(
-      req.body,
-    );
-    const finalQuery = buildSearchQuery({ disease, query });
+    const { disease, query, location } = req.body;
 
-    if (!finalQuery && !disease) {
-      return res.status(400).json({ error: "A query or disease is required." });
+    if (!disease) {
+      return res.status(400).json({ error: "Disease is required" });
     }
 
-    const context = { disease, query, location };
-    const [pubmedResponse, openalexResponse, trialsResponse] = await Promise.all([
-      fetchPubMed(finalQuery),
+    /* -------------------- QUERY BUILD -------------------- */
+
+    const finalQuery = query
+      ? `${disease} ${query}`
+      : disease;
+
+    const intent = detectIntent(query);
+
+    console.log("🔍 Query:", finalQuery);
+    console.log("🧠 Intent:", intent);
+
+    /* -------------------- FETCH -------------------- */
+
+    const [papersRaw, trialsRaw] = await Promise.all([
       fetchOpenAlex(finalQuery),
-      fetchTrials({ disease, query, location }),
+      fetchTrials(disease),
     ]);
-    const pubmedCandidates = normalizePubMedCandidates(pubmedResponse.items);
-    const openalexCandidates = normalizeOpenAlexCandidates(openalexResponse.items);
-    const trialCandidates = normalizeTrialCandidates(trialsResponse.items);
+
+    console.log("📊 Papers fetched:", papersRaw.length);
+    console.log("📊 Trials fetched:", trialsRaw.length);
+
+    /* -------------------- RANKING -------------------- */
+
     const papers = rankResults(
-      [...pubmedCandidates, ...openalexCandidates],
+      papersRaw,
       disease,
       query,
       location,
+      "paper",
+      intent,
+      trialsRaw
     );
+
     const clinicalTrials = rankResults(
-      trialCandidates,
+      trialsRaw,
       disease,
       query,
       location,
+      "trial",
+      intent,
+      papersRaw
     );
-    const llmResponse = await generateAiInsights({
+
+    /* -------------------- AI -------------------- */
+
+    const ai = await generateAiInsights({
       disease,
       query,
       location,
       papers,
       trials: clinicalTrials,
     });
-    const metadata = {
-      totalFetched: {
-        pubmed: pubmedResponse.totalFetched,
-        openalex: openalexResponse.totalFetched,
-        clinicalTrials: trialsResponse.totalFetched,
-      },
-      filteredCount: {
-        papers: papers.length,
-        clinicalTrials: clinicalTrials.length,
-      },
-      rankingStrategy:
-        "40 relevance, 20 recency, 20 location, 10 recruiting status, 10 source credibility",
-    };
 
-    console.log("[search] expandedQuery:", finalQuery);
-    console.log("[search] fetched:", metadata.totalFetched);
-    console.log("[search] returned:", metadata.filteredCount);
+    /* -------------------- RESPONSE -------------------- */
 
-    const formatted = buildStructuredResponse({
-      overview: llmResponse.overview,
-      topRecommendation: llmResponse.topRecommendation,
-      aiInsights: llmResponse.aiInsights,
+    res.json({
+      ...ai,
       papers,
       clinicalTrials,
-      metadata,
+      metadata: {
+        totalFetched: papersRaw.length + trialsRaw.length,
+        papersFetched: papersRaw.length,
+        trialsFetched: trialsRaw.length,
+        returnedPapers: papers.length,
+        returnedTrials: clinicalTrials.length,
+        intent,
+        rankingStrategy:
+          "multi-factor scoring (disease + query + recency + location + intent + cross-source validation)",
+      },
     });
 
-    res.json(formatted);
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error("❌ Search error:", error.message);
     res.status(500).json({ error: "Server error" });
   }
 };

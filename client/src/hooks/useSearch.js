@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { searchResources } from "../api/api.js";
+import { searchResearch } from "../api/api";
 
 const initialResults = {
   overview: "",
@@ -17,6 +17,7 @@ export function useSearch() {
     query: "",
     location: "",
   });
+
   const [results, setResults] = useState(initialResults);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -24,7 +25,7 @@ export function useSearch() {
 
   const onChange = (event) => {
     const { name, value } = event.target;
-    setForm((current) => ({ ...current, [name]: value }));
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const onSubmit = async (event) => {
@@ -34,7 +35,8 @@ export function useSearch() {
     setHasSearched(true);
 
     try {
-      const data = await searchResources(form);
+      const data = await searchResearch(form);
+
       setResults({
         overview: data.overview || "",
         topRecommendation: data.topRecommendation || "",
@@ -48,6 +50,7 @@ export function useSearch() {
           location: form.location,
         },
       });
+
     } catch (error) {
       console.error(error);
       setResults(initialResults);

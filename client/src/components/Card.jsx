@@ -11,10 +11,13 @@ export default function Card({
 }) {
   return (
     <article className="card">
-      {badge ? <span className="card-badge">{badge}</span> : null}
+      <div className="card-topline">
+        {badge ? <span className="card-badge">{badge}</span> : null}
+        {score ? <span className="card-score">{score}</span> : null}
+      </div>
       <h3>{title}</h3>
       {subtitle ? <p className="card-subtitle">{subtitle}</p> : null}
-      {description ? <p>{description}</p> : null}
+      {description ? <p className="card-description">{description}</p> : null}
       {relevanceNote || reason ? (
         <p className="card-note">{relevanceNote || reason}</p>
       ) : null}
@@ -33,7 +36,7 @@ export default function Card({
       ) : null}
       {link ? (
         <a href={link} target="_blank" rel="noreferrer">
-          View source
+          Open source
         </a>
       ) : null}
     </article>

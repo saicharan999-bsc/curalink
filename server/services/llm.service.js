@@ -1,8 +1,8 @@
-import { http } from "./http.service.js";
+import axios from "axios";
 
-const DEFAULT_MODEL = "google/flan-t5-large";
+const DEFAULT_MODEL = "google/flan-t5-base"; // ✅ FIXED MODEL
 
-/* -------------------- FALLBACK (NO TOKEN / FAIL SAFE) -------------------- */
+/* -------------------- FALLBACK (SAFE MODE) -------------------- */
 
 const fallbackInsights = ({ disease, query, location, papers, trials }) => {
   const topPaper = papers?.[0];
@@ -36,15 +36,19 @@ export const generateAiInsights = async ({
   trials = [],
 }) => {
   const apiToken = process.env.HF_API_TOKEN;
+
+  // ✅ FORCE SAFE MODEL
   const model = process.env.HF_MODEL || DEFAULT_MODEL;
 
-  // 👉 If no token → fallback (important for demo reliability)
+  console.log("🧠 Using model:", model);
+
+  // 👉 No token → fallback
   if (!apiToken) {
-    console.log("⚠️ No HF token → using fallback insights");
+    console.log("⚠️ No HF token → fallback mode");
     return fallbackInsights({ disease, query, location, papers, trials });
   }
 
-  /* -------------------- SAFE DATA (LIMIT SIZE) -------------------- */
+  /* -------------------- LIMIT DATA -------------------- */
 
   const safePapers = papers.slice(0, 5).map((p) => ({
     title: p.title,
@@ -61,7 +65,7 @@ export const generateAiInsights = async ({
     reason: t.reason,
   }));
 
-  /* -------------------- PROMPT (CLEAN + NON-HALLUCINATED) -------------------- */
+  /* -------------------- PROMPT -------------------- */
 
   const prompt = `
 You are a medical research assistant.
@@ -79,25 +83,24 @@ ${JSON.stringify(safeTrials, null, 2)}
 
 TASK:
 Provide:
-
 1. Key Medical Insight
 2. Best Treatment Approach
 3. Most Relevant Clinical Trial (with reason)
 4. Risks or Considerations
 
 RULES:
-- Use ONLY provided data
-- Do NOT hallucinate
-- Be concise and factual
+- Use ONLY given data
+- Be concise
+- No hallucination
 `;
 
   try {
-    const response = await http.post(
+    const response = await axios.post(
       `https://api-inference.huggingface.co/models/${model}`,
       {
         inputs: prompt,
         parameters: {
-          max_new_tokens: 220,
+          max_new_tokens: 200,
           temperature: 0.2,
           return_full_text: false,
         },
@@ -107,6 +110,7 @@ RULES:
           Authorization: `Bearer ${apiToken}`,
           "Content-Type": "application/json",
         },
+        timeout: 30000,
       }
     );
 
@@ -118,8 +122,6 @@ RULES:
       console.log("⚠️ Empty HF response → fallback");
       return fallbackInsights({ disease, query, location, papers, trials });
     }
-
-    /* -------------------- CLEAN RESPONSE -------------------- */
 
     return {
       overview: `${disease} evidence ranked across research papers and clinical trials.`,
@@ -135,6 +137,8 @@ RULES:
 
   } catch (error) {
     console.error("❌ Hugging Face Error:", error.message);
+
+    // 🔥 Always fallback (never crash)
     return fallbackInsights({ disease, query, location, papers, trials });
   }
 };

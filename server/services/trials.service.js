@@ -1,33 +1,63 @@
-import { http } from "./http.service.js";
+import axios from "axios";
 
-const trialStatusPriority = {
-  RECRUITING: 1,
-  "NOT_YET_RECRUITING": 2,
-  "ACTIVE_NOT_RECRUITING": 3,
-};
-
-export const fetchTrials = async ({ disease, query, location }) => {
+export const fetchTrials = async (disease) => {
   try {
-    const condition = encodeURIComponent(disease || query || "");
-    const term = encodeURIComponent([query, location].filter(Boolean).join(" "));
-    const url = `https://clinicaltrials.gov/api/v2/studies?query.cond=${condition}&query.term=${term}&pageSize=40&format=json`;
-    const res = await http.get(url);
-    const items = (res.data.studies || []).sort((left, right) => {
-      const leftStatus = left.protocolSection?.statusModule?.overallStatus || "";
-      const rightStatus = right.protocolSection?.statusModule?.overallStatus || "";
+    const res = await axios.get(
+      `https://clinicaltrials.gov/api/v2/studies?query.cond=${encodeURIComponent(
+        disease
+      )}&pageSize=100`
+    );
 
-      return (
-        (trialStatusPriority[leftStatus] || 99) -
-        (trialStatusPriority[rightStatus] || 99)
-      );
-    });
+    const studies = res.data.studies || [];
 
-    return {
-      items,
-      totalFetched: items.length,
-    };
+    return studies
+      .filter((t) => t.protocolSection) // remove invalid
+      .map((t) => {
+        const protocol = t.protocolSection;
+
+        const title =
+          protocol.identificationModule?.briefTitle || "No title";
+
+        const status =
+          protocol.statusModule?.overallStatus || "UNKNOWN";
+
+        const locations =
+          protocol.contactsLocationsModule?.locations || [];
+
+        const firstLocation = locations[0];
+
+        const city = firstLocation?.city || "";
+        const country = firstLocation?.country || "";
+
+        const location = [city, country].filter(Boolean).join(", ") || "N/A";
+
+        /* -------------------- SUMMARY IMPROVEMENT -------------------- */
+
+        let summary =
+          protocol.descriptionModule?.briefSummary ||
+          protocol.descriptionModule?.detailedDescription ||
+          "Clinical trial investigating treatment effectiveness";
+
+        /* -------------------- CLEAN SUMMARY -------------------- */
+
+        if (summary.length > 300) {
+          summary = summary.slice(0, 300) + "...";
+        }
+
+        /* -------------------- RETURN -------------------- */
+
+        return {
+          title,
+          summary,
+          status,
+          location,
+          type: "trial",
+        };
+      })
+      .slice(0, 80); // deep pool
+
   } catch (err) {
-    console.error(err);
-    return { items: [], totalFetched: 0 };
+    console.error("❌ Trials error:", err.message);
+    return [];
   }
 };

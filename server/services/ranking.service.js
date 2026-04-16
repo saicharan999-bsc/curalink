@@ -1,157 +1,108 @@
-const tokenize = (value = "") =>
-  value
-    .toLowerCase()
-    .split(/[^a-z0-9]+/i)
-    .filter((token) => token.length > 2);
-
-const countKeywordCoverage = (text, terms) => {
-  if (!terms.length) {
-    return 0;
-  }
-
-  const matches = terms.filter((term) => text.includes(term)).length;
-
-  return matches / terms.length;
-};
-
-const getRecencyScore = (year) => {
-  const numericYear = Number(year);
-
-  if (!numericYear) {
-    return 0;
-  }
-
-  const currentYear = new Date().getFullYear();
-  const age = currentYear - numericYear;
-
-  if (age <= 2) {
-    return 20;
-  }
-
-  if (age <= 5) {
-    return 15;
-  }
-
-  if (age <= 10) {
-    return 10;
-  }
-
-  if (age <= 15) {
-    return 5;
-  }
-
-  return 0;
-};
-
-const getLocationScore = (item, location) => {
-  if (item.type !== "trial" || !location) {
-    return 0;
-  }
-
-  const locationTerms = tokenize(location);
-  const locationText = `${item.location || ""} ${item.searchableText || ""}`.toLowerCase();
-
-  if (!locationTerms.length) {
-    return 0;
-  }
-
-  const coverage = countKeywordCoverage(locationText, locationTerms);
-
-  return Math.round(coverage * 20);
-};
-
-const getRecruitingScore = (item) => {
-  if (item.type !== "trial") {
-    return 0;
-  }
-
-  const recruitingStatuses = [
-    "recruiting",
-    "not yet recruiting",
-    "enrolling by invitation",
-    "active, not recruiting",
-  ];
-
-  return recruitingStatuses.includes(item.status?.toLowerCase()) ? 10 : 0;
-};
-
-const getReliabilityScore = (item) => {
-  if (item.source === "PubMed" || item.source === "ClinicalTrials.gov") {
-    return 10;
-  }
-
-  if (item.source === "OpenAlex") {
-    return 8;
-  }
-
-  return 0;
-};
-
-const buildReason = (reasonParts) =>
-  reasonParts.length
-    ? reasonParts.join("; ")
-    : "Selected because it remains one of the strongest available matches.";
-
 export const rankResults = (
-  data = [],
-  disease = "",
-  query = "",
-  location = "",
+  items,
+  disease,
+  query,
+  location,
+  type,
+  intent = "general",
+  crossSource = []
 ) => {
-  const keywords = [...tokenize(disease), ...tokenize(query)];
+  if (!items || items.length === 0) return [];
 
-  return data
+  return items
     .map((item) => {
-      const searchableText = [
-        item.title,
-        item.summary,
-        item.authors,
-        item.journal,
-        item.location,
-        item.status,
-        item.snippet,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
+      let score = 0;
+      let reasons = new Set();
 
-      const keywordCoverage = countKeywordCoverage(searchableText, keywords);
-      const keywordScore = Math.round(keywordCoverage * 40);
-      const recencyScore = getRecencyScore(item.year);
-      const locationScore = getLocationScore(item, location);
-      const recruitingScore = getRecruitingScore(item);
-      const reliabilityScore = getReliabilityScore(item);
-      const score =
-        keywordScore +
-        recencyScore +
-        locationScore +
-        recruitingScore +
-        reliabilityScore;
-      const reasonParts = [
-        keywordScore
-          ? `Keyword relevance matched ${Math.round(keywordCoverage * 100)}% of disease/query terms`
-          : "",
-        recencyScore ? `Recent evidence from ${item.year}` : "",
-        locationScore ? `Location aligned with ${location}` : "",
-        recruitingScore ? "Trial is currently recruiting or enrollment-relevant" : "",
-        reliabilityScore ? `Trusted source: ${item.source}` : "",
-      ].filter(Boolean);
+      const text = `${item.title} ${item.summary}`.toLowerCase();
+
+      /* -------------------- DISEASE MATCH -------------------- */
+      if (disease && text.includes(disease.toLowerCase())) {
+        score += 40;
+        reasons.add("matches disease");
+      }
+
+      /* -------------------- QUERY MATCH -------------------- */
+      if (query) {
+        const q = query.toLowerCase();
+
+        if (text.includes(q)) {
+          score += 35;
+          reasons.add("matches treatment/query");
+        }
+
+        // partial match
+        q.split(" ").forEach((word) => {
+          if (word.length > 3 && text.includes(word)) {
+            score += 5;
+          }
+        });
+      }
+
+      /* -------------------- RECENCY -------------------- */
+      if (item.year >= 2023) {
+        score += 25;
+        reasons.add("very recent");
+      } else if (item.year >= 2020) {
+        score += 15;
+        reasons.add("recent study");
+      } else if (item.year >= 2015) {
+        score += 5;
+      }
+
+      /* -------------------- LOCATION -------------------- */
+      if (
+        type === "trial" &&
+        location &&
+        item.location?.toLowerCase().includes(location.toLowerCase())
+      ) {
+        score += 20;
+        reasons.add("location match");
+      }
+
+      /* -------------------- TRIAL STATUS -------------------- */
+      if (type === "trial" && item.status === "RECRUITING") {
+        score += 20;
+        reasons.add("recruiting trial");
+      }
+
+      /* -------------------- INTENT BOOST -------------------- */
+      if (intent === "treatment" && text.includes("treatment")) {
+        score += 15;
+        reasons.add("treatment-focused");
+      }
+
+      if (intent === "trial" && type === "trial") {
+        score += 25;
+        reasons.add("trial-focused");
+      }
+
+      /* -------------------- CROSS-SOURCE VALIDATION -------------------- */
+      if (crossSource.length > 0) {
+        const keyword = item.title.split(" ")[0]?.toLowerCase();
+
+        const matched = crossSource.some((c) =>
+          c.title?.toLowerCase().includes(keyword)
+        );
+
+        if (matched) {
+          score += 15;
+          reasons.add("supported by multiple sources");
+        }
+      }
+
+      /* -------------------- CONFIDENCE -------------------- */
+      let confidence = "LOW";
+      if (score > 120) confidence = "HIGH";
+      else if (score > 70) confidence = "MEDIUM";
 
       return {
         ...item,
         score,
-        reason: buildReason(reasonParts),
-        explanation: [
-          `Selected because it matches ${disease || "the condition"}${query ? ` and the query "${query}"` : ""}.`,
-          recencyScore ? `It includes relatively recent evidence from ${item.year}.` : "",
-          locationScore ? `The study location is relevant to ${location}.` : "",
-          recruitingScore ? "The trial is still actionable based on its recruiting status." : "",
-          reliabilityScore ? `The source is considered credible (${item.source}).` : "",
-        ]
-          .filter(Boolean)
-          .join(" "),
+        confidence,
+        reason: Array.from(reasons).join(", "),
       };
     })
-    .sort((left, right) => right.score - left.score)
-    .slice(0, 8);
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 6);
 };
